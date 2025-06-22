@@ -11,6 +11,17 @@ The script aims to facilitate the use of the AI Cup dataset in vehicle re-identi
 - **Benchmarking**: Support cross-dataset evaluations in vehicle Re-ID, enhancing the robustness of research findings.
 
 ## Dependencies
+## Dependencies
+
+To run SwinReID, the following dependencies are required:
+
+| Dependency   | Version       | Purpose                              |
+|--------------|---------------|--------------------------------------|
+| Python       | 3.8           | Core programming language            |
+| PyTorch      | 1.7.1+        | Deep learning framework              |
+| torchvision  | 0.8.2+        | Image processing and transformations |
+| timm         | 0.3.2+        | Pretrained model utilities           |
+| CUDA         | 11.7+         | GPU acceleration (optional)          |
 
 Install all dependencies using:
 ```bash
