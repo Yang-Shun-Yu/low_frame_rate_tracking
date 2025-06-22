@@ -64,3 +64,7 @@ The script generates the following files and directories in the `output_dir`:
 | `gt_index.txt`         | Ground truth indices for evaluation, listing test image indices per query.  |
 | `jk_index.txt`         | Empty file (not used in this script, possibly for future extensions).       |
 
+
+
+
+
