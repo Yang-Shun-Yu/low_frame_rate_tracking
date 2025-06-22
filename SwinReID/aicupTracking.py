@@ -1479,112 +1479,113 @@ def multi_camera_mapping(merge_storage, thresholds):
 
 
 
-# =============================================================================
-# Main Pipeline
-# =============================================================================
-if __name__ == '__main__':
-    # -----------------------------------------------------------------------------
-    # Setup: paths, models, and thresholds
-    # -----------------------------------------------------------------------------
-    # dataset_path = '/home/eddy/Desktop/cropped_image'
-    backbone_model = 'swin'
-    # weights_path = '/home/eddy/Desktop/MasterThesis/mainProgram/AICUP_datasets_fine_tune/swin_center_lr_0.5_loss_3e-4_smmothing_0.1/swin_center_loss_best.pth'
-    
-    # backbone_model = 'swin'
-    # weights_path = '/home/eddy/Desktop/MasterThesis/mainProgram/AICUP_datasets_fine_tune/swin_center_lr_0.5_loss_3e-4_smoothing_0.1/swin_center_loss_best.pth'
-    weights_path = '/home/eddy/Desktop/MasterThesis/mainProgram/AICUP_datasets_fine_tune/swin_center_lr_0.5_loss_3e-4_smmothing_0.1/swin_center_loss_best.pth'
-    # weights_path = '/home/eddy/Desktop/MasterThesis/mainProgram/Veri776_datasets_train/swin_center_lr_0.5_loss_3e-4_smmothing_0.1/swin_centerloss_best.pth'
 
-    # weights_path ="/home/eddy/Desktop/MasterThesis/mainProgram/reid_tracking/model_weight/swin_use_test.pth"
-    
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Low-FPS ReID Tracking Pipeline using Swin Transformer backbone"
+    )
+    # Paths
+    parser.add_argument("--weights-path", type=str, required=True,
+        help="Path to the pretrained model weights (.pth)")
+    parser.add_argument("--image-root", type=str, required=True,
+        help="Root directory of test images")
+    parser.add_argument("--label-root", type=str, required=True,
+        help="Root directory of test labels")
+    parser.add_argument("--output-root", type=str, default="./reid_tracking",
+        help="Directory under which to write forward, reverse, and merged labels")
+    # Model
+    parser.add_argument("--backbone", type=str, default="swin",
+        choices=["swin", "resnet50", "mobilenetv2"],
+        help="Backbone architecture for ReID model")
+    parser.add_argument("--num-classes", type=int, default=3441,
+        help="Number of ID classes the model was trained on")
+    # Data loader
+    parser.add_argument("--batch-size", type=int, default=16,
+        help="Batch size for feature extraction")
+    parser.add_argument("--num-workers", type=int, default=16,
+        help="Number of DataLoader workers")
+    # Tracking
+    parser.add_argument("--buffer-size", type=int, default=3,
+        help="Number of frames to buffer in forward/reverse tracking")
+    parser.add_argument("--threshold", type=float, default=0.5,
+        help="Distance threshold for associating features")
+    # Device
+    parser.add_argument("--device", type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
+        help="Device to run the model on")
+    return parser.parse_args()
 
-    # for each camera ,calculate the threshold 
+def setup_logging():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
 
+def ensure_dirs(*paths):
+    for p in paths:
+        os.makedirs(p, exist_ok=True)
 
-    # -----------------------------------------------------------------------------
-    # Load image transformations and model
-    # -----------------------------------------------------------------------------
-    image_root_directory = '/home/eddy/Desktop/MasterThesis/mainProgram/AICUP_datasets/test/images'
-    label_root_directory = '/home/eddy/Desktop/MasterThesis/mainProgram/AICUP_datasets/test/labels'
-    # label_root_directory = '/home/eddy/Desktop/MasterThesis/dcslab-ai-cup2024/yolov9/runs/detect'
-    # image_root_directory = '/home/eddy/Desktop/MasterThesis/mainProgram/AICUP_datasets/valid/images'
-    # label_root_directory = '/home/eddy/Desktop/MasterThesis/mainProgram/AICUP_datasets/valid/labels'
+def main():
+    args = parse_args()
+    setup_logging()
+    logging.info("Starting tracking pipeline")
 
-    
-    save_path = os.path.join('/home/eddy/Desktop/MasterThesis/mainProgram/reid_tracking', 'labels')
-    os.makedirs(save_path, exist_ok=True)
-    batch_size = 16
-    num_workers = 16
+    # Prepare directories
+    forward_dir = os.path.join(args.output_root, "forward_labels")
+    reverse_dir = os.path.join(args.output_root, "reverse_labels")
+    merged_dir  = os.path.join(args.output_root, "merge_labels")
+    ensure_dirs(forward_dir, reverse_dir, merged_dir)
 
+    # Load model
+    logging.info(f"Loading model backbone={args.backbone}, num_classes={args.num_classes}")
+    model = make_model(backbone=args.backbone, num_classes=args.num_classes)
+    state = torch.load(args.weights_path, map_location="cpu")
+    model.load_state_dict(state)
+    model.to(args.device)
+    model.eval()
 
-    image_transform = Transforms.get_valid_transform()
-    # my method 
-    net = make_model(backbone=backbone_model, num_classes=3441)
-    # 學長方法
-    # net = make_model(backbone=backbone_model, num_classes=576)
-    state_dict = torch.load(weights_path, map_location='cpu')
-    net.load_state_dict(state_dict)
-    net.eval()
+    # Build label→feature map
+    logging.info("Extracting features from all labeled crops")
+    transform = Transforms.get_valid_transform()
+    label_feat_map = create_label_feature_map(
+        model, args.image_root, args.label_root,
+        transform, args.batch_size, args.num_workers
+    )
 
-
-    os.makedirs(save_path, exist_ok=True)
-
-    # my method 
-    # net = make_model(backbone=backbone_model, num_classes=3441)
-    # 學長方法
-    # net = make_model(backbone=backbone_model, num_classes=576)
-    # state_dict = torch.load(weights_path, map_location='cpu')
-    # net.load_state_dict(state_dict)
-    # net.eval()
-
-    # Create a label-to-feature mapping
-    label_to_feature_map = create_label_feature_map(net, image_root_directory, label_root_directory, image_transform,batch_size,num_workers)
-
-    # -----------------------------------------------------------------------------
     # Forward tracking
-    # -----------------------------------------------------------------------------
-    buffer_size = 3
-    thresholds = 0.5
-    storage_forward = process_label_features(label_to_feature_map, thresholds, buffer_size)
+    logging.info(f"Running forward tracking (buffer={args.buffer_size}, thr={args.threshold})")
+    storage_fwd = process_label_features(label_feat_map, args.threshold, args.buffer_size)
 
-    # -----------------------------------------------------------------------------
-    # Reverse tracking: sort labels in reverse (by time and frame)
-    # -----------------------------------------------------------------------------
-    reversed_label_to_feature_map = dict(
+    # Reverse tracking
+    logging.info("Preparing reversed label map for backward pass")
+    reversed_map = dict(
         sorted(
-            label_to_feature_map.items(),
-            key=lambda item: (
-                os.path.basename(os.path.dirname(item[0])),  # time_range directory name
-                -int(os.path.basename(item[0]).split('.')[0])  # descending frame number
+            label_feat_map.items(),
+            key=lambda kv: (
+                os.path.basename(os.path.dirname(kv[0])),
+                -int(os.path.basename(kv[0]).split('.')[0])
             )
         )
     )
-    storage_reverse = process_label_features(reversed_label_to_feature_map, thresholds, buffer_size)
+    logging.info("Running reverse tracking")
+    storage_rev = process_label_features(reversed_map, args.threshold, args.buffer_size)
 
-    # -----------------------------------------------------------------------------
-    # Merge storages and write results
-    # -----------------------------------------------------------------------------
-    merged_storage = merge_storages(storage_forward, storage_reverse)
-    
+    # Merge and write results
+    logging.info("Merging forward & reverse tracking storages")
+    merged_storage = merge_storages(storage_fwd, storage_rev)
+    write_storage(merged_storage, storage_fwd, storage_rev)
 
-    # final_multi_camera_storage = multi_camera_mapping(merged_storage,thresholds)
-    write_storage(merged_storage, storage_forward, storage_reverse)
+    # Update labels into output directories
+    logging.info("Copying label files to output directories")
+    update_labels(forward_dir, args.label_root)
+    update_labels(reverse_dir, args.label_root)
+    update_labels(merged_dir,  args.label_root)
 
-    # target_labels = '/home/eddy/Desktop/vehicle_reid_itsc2023/trackingResult/multi_camera_labels'
-    source_labels = label_root_directory
-    # update_labels(target_labels,source_labels)
-    target_labels = '/home/eddy/Desktop/MasterThesis/mainProgram/reid_tracking/forward_labels'
-    update_labels(target_labels,source_labels)
+    logging.info("Tracking pipeline finished.")
 
-    target_labels = '/home/eddy/Desktop/MasterThesis/mainProgram/reid_tracking/reverse_labels'
-    update_labels(target_labels,source_labels)
-
-    target_labels = '/home/eddy/Desktop/MasterThesis/mainProgram/reid_tracking/merge_labels'
-    update_labels(target_labels,source_labels)
-logger.info('Tracking pipeline finished.')
-
-    
+if __name__ == "__main__":
+    main()
 
 
 
