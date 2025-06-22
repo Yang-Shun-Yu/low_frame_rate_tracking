@@ -14,12 +14,6 @@ The primary goal of this project is to develop an effective vehicle tracking sys
 
 By training on the VeRi-776 dataset, a benchmark for vehicle Re-ID with over 49,000 images of 776 vehicles across 20 cameras, and fine-tuning on the AI Cup dataset, the project aims to provide a robust solution for these challenges. The approach supports applications requiring continuous vehicle tracking in real-world settings, such as urban traffic analysis and security surveillance.
 
-## Dependencies
-
-Install all dependencies using:
-```bash
-pip install -r requirements.txt
-```
 
 ## Usage
 
