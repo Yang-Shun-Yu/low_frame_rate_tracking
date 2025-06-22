@@ -1,5 +1,4 @@
-# PreprocessDataset 
-## AI Cup to VeRi-776 Dataset Conversion Script
+# PreprocessDataset : AI Cup to VeRi-776 Dataset Conversion Script
 ## Introduction
 
 This Python script converts the AI Cup dataset into the VeRi-776 dataset format, a widely adopted benchmark for vehicle re-identification (Re-ID) tasks. The [VeRi-776 dataset](https://paperswithcode.com/dataset/veri-776) contains over 49,000 images of 776 vehicles captured by 20 cameras, with annotations for bounding boxes, vehicle types, colors, and brands. By converting the AI Cup dataset to this format, researchers and developers can leverage existing VeRi-776-compatible tools and models for vehicle Re-ID studies, enabling seamless integration and comparison with established benchmarks.
