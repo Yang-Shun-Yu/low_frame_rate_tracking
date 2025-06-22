@@ -10,6 +10,14 @@ The script aims to facilitate the use of the AI Cup dataset in vehicle re-identi
 - **Developers**: Integrate the AI Cup dataset into pipelines or tools designed for VeRi-776, streamlining development workflows.
 - **Benchmarking**: Support cross-dataset evaluations in vehicle Re-ID, enhancing the robustness of research findings.
 
+## Dependencies
+
+Install all dependencies using:
+```bash
+pip install -r requirements.txt
+```
+
+
 ## Usage
 
 Run the script from the command line, providing paths to the input dataset and output directory:
