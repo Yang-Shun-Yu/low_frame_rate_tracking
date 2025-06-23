@@ -110,29 +110,53 @@ def save_buffer_to_storage(buffer, storage):
         storage[file_path].append((buffer_feature,buffer_id, center_x_ratio, center_y_ratio))
 
 
-def write_storage(merge_storage, storage_forward, storage_reverse):
-    """
-    Write all storage dictionaries to disk.
-    The folder name is changed based on label type.
-    """
+# def write_storage(merge_storage, storage_forward, storage_reverse):
+#     """
+#     Write all storage dictionaries to disk.
+#     The folder name is changed based on label type.
+#     """
 
+#     for storage, label_folder in zip(
+#         [merge_storage, storage_forward, storage_reverse],
+#         ['merge_labels', 'forward_labels', 'reverse_labels']
+#     ):
+#         for file_path, entries in storage.items():
+
+#             parts = file_path.split(os.sep)
+#             parts[-3] = label_folder  # Change folder name to match label type
+#             folder_path = os.sep.join(parts[:-1])
+#             os.makedirs(folder_path, exist_ok=True)
+#             final_file_path = os.sep.join(parts)
+
+#             with open(final_file_path, 'w') as f:
+#                 for _,obj_id, _, _ in entries:
+#                     f.write(f"{obj_id}\n")
+
+
+def write_storage(merge_storage, storage_forward, storage_reverse, save_path):
+    """
+    Write all storage dictionaries to disk under save_path.
+    """
     for storage, label_folder in zip(
         [merge_storage, storage_forward, storage_reverse],
         ['merge_labels', 'forward_labels', 'reverse_labels']
     ):
         for file_path, entries in storage.items():
+            # pull out just the time‐range folder and the filename
+            time_range = os.path.basename(os.path.dirname(file_path))
+            file_name  = os.path.basename(file_path)
 
-            parts = file_path.split(os.sep)
-            parts[-3] = label_folder  # Change folder name to match label type
-            folder_path = os.sep.join(parts[:-1])
-            os.makedirs(folder_path, exist_ok=True)
-            final_file_path = os.sep.join(parts)
+            # build exactly: <save_path>/<label_folder>/<time_range>/<file_name>
+            out_folder = os.path.join(save_path, label_folder, time_range)
+            os.makedirs(out_folder, exist_ok=True)
+            out_path = os.path.join(out_folder, file_name)
 
-            with open(final_file_path, 'w') as f:
-                for _,obj_id, _, _ in entries:
+            # debug print—uncomment to verify where it's writing:
+            # print("Writing tracking labels to:", out_path)
+
+            with open(out_path, 'w') as f:
+                for _, obj_id, _, _ in entries:
                     f.write(f"{obj_id}\n")
-
-
 
 def update_labels(target_labels_folder, source_labels_folder):
     # Iterate through each subfolder in target_labels
@@ -1485,27 +1509,27 @@ def parse_args():
         description="Low-FPS ReID Tracking Pipeline using Swin Transformer backbone"
     )
     # Paths
-    parser.add_argument("--weights-path", type=str, required=True,
+    parser.add_argument("--weights_path", type=str, required=True,
         help="Path to the pretrained model weights (.pth)")
-    parser.add_argument("--image-root", type=str, required=True,
+    parser.add_argument("--image_root", type=str, required=True,
         help="Root directory of test images")
-    parser.add_argument("--label-root", type=str, required=True,
+    parser.add_argument("--label_root", type=str, required=True,
         help="Root directory of test labels")
-    parser.add_argument("--output-root", type=str, default="./reid_tracking",
+    parser.add_argument("--output_root", type=str, default="./reid_tracking",
         help="Directory under which to write forward, reverse, and merged labels")
     # Model
     parser.add_argument("--backbone", type=str, default="swin",
         choices=["swin", "resnet50", "mobilenetv2"],
         help="Backbone architecture for ReID model")
-    parser.add_argument("--num-classes", type=int, default=3441,
+    parser.add_argument("--num_classes", type=int, default=3441,
         help="Number of ID classes the model was trained on")
     # Data loader
-    parser.add_argument("--batch-size", type=int, default=16,
+    parser.add_argument("--batch_size", type=int, default=16,
         help="Batch size for feature extraction")
-    parser.add_argument("--num-workers", type=int, default=16,
+    parser.add_argument("--num_workers", type=int, default=16,
         help="Number of DataLoader workers")
     # Tracking
-    parser.add_argument("--buffer-size", type=int, default=3,
+    parser.add_argument("--buffer_size", type=int, default=3,
         help="Number of frames to buffer in forward/reverse tracking")
     parser.add_argument("--threshold", type=float, default=0.5,
         help="Distance threshold for associating features")
@@ -1547,7 +1571,7 @@ def main():
 
     # Build label→feature map
     logging.info("Extracting features from all labeled crops")
-    transform = Transforms.get_valid_transform()
+    transform = Transforms.get_test_transform()
     label_feat_map = create_label_feature_map(
         model, args.image_root, args.label_root,
         transform, args.batch_size, args.num_workers
@@ -1574,7 +1598,8 @@ def main():
     # Merge and write results
     logging.info("Merging forward & reverse tracking storages")
     merged_storage = merge_storages(storage_fwd, storage_rev)
-    write_storage(merged_storage, storage_fwd, storage_rev)
+    write_storage(merged_storage, storage_fwd, storage_rev, args.output_root)
+  
 
     # Update labels into output directories
     logging.info("Copying label files to output directories")

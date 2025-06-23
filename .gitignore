@@ -1,0 +1,18 @@
+# Ignore Python cache directories
+__pycache__/
+
+# Ignore text files
+*.txt
+
+# Ignore YAML files
+*.yaml
+
+# Ignore PyTorch model weights
+*.pth
+*.pt
+
+# Ignore log files
+*.log
+
+# Ignore JPEG images
+*.jpg

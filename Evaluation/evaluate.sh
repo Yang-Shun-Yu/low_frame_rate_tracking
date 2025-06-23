@@ -5,10 +5,18 @@ TS_RESULTS_DIR='/home/eddy/Desktop/MasterThesis/mainProgram/ts_results'
 
 GT_RESULT_DIR='/home/eddy/Desktop/MasterThesis/mainProgram/gt_results'
 
-SOURCE_LABELS='/home/eddy/Desktop/MasterThesis/mainProgram/reid_tracking/merge_labels/'
+SOURCE_LABELS='/home/eddy/Desktop/MasterThesis/mainProgram/low_frame_rate_tracking/Result/merge_labels/'
 
-TARGET_LABELS='/home/eddy/Desktop/MasterThesis/mainProgram/reid_tracking/labels/'
+TARGET_LABELS='/home/eddy/Desktop/MasterThesis/mainProgram/low_frame_rate_tracking/Result/labels/'
 
+# Ensure TARGET_LABELS exists (create it if it doesn't)
+if [ ! -d "$TARGET_LABELS" ]; then
+    echo "Creating target labels directory: $TARGET_LABELS"
+    mkdir -p "$TARGET_LABELS" || {
+        echo "Failed to create directory: $TARGET_LABELS"
+        exit 1
+    }
+fi
 cp -r "${SOURCE_LABELS}"* "${TARGET_LABELS}"
 
 # Clear the ts_results directory
@@ -31,7 +39,7 @@ fi
 
 # Run the first Python script
 python3 /home/eddy/Desktop/MasterThesis/mainProgram/tools/datasets/AICUP_to_MOT15.py \
-    --AICUP_dir '/home/eddy/Desktop/MasterThesis/mainProgram/reid_tracking/labels' \
+    --AICUP_dir '/home/eddy/Desktop/MasterThesis/mainProgram/low_frame_rate_tracking/Result/labels' \
     --MOT15_dir "$TS_RESULTS_DIR"
 
 # Check if the previous script executed successfully
