@@ -108,28 +108,53 @@ def save_buffer_to_storage(buffer, storage):
     for buffer_feature, buffer_id, center_x_ratio, center_y_ratio, _, _ in buffer_feature_id_list:
         storage[file_path].append((buffer_feature,buffer_id, center_x_ratio, center_y_ratio))
 
-
-def write_storage(merge_storage, storage_forward, storage_reverse,multi_cam_storage):
+def write_storage(merge_storage, storage_forward, storage_reverse, save_path):
     """
-    Write all storage dictionaries to disk.
-    The folder name is changed based on label type.
+    Write all storage dictionaries to disk under save_path.
     """
-
     for storage, label_folder in zip(
-        [merge_storage, storage_forward, storage_reverse,multi_cam_storage],
-        ['merge_labels', 'forward_labels', 'reverse_labels','multi_cam_labels']
+        [merge_storage, storage_forward, storage_reverse],
+        ['merge_labels', 'forward_labels', 'reverse_labels']
     ):
         for file_path, entries in storage.items():
+            # pull out just the time‐range folder and the filename
+            time_range = os.path.basename(os.path.dirname(file_path))
+            file_name  = os.path.basename(file_path)
 
-            parts = file_path.split(os.sep)
-            parts[-3] = label_folder  # Change folder name to match label type
-            folder_path = os.sep.join(parts[:-1])
-            os.makedirs(folder_path, exist_ok=True)
-            final_file_path = os.sep.join(parts)
+            # build exactly: <save_path>/<label_folder>/<time_range>/<file_name>
+            out_folder = os.path.join(save_path, label_folder, time_range)
+            os.makedirs(out_folder, exist_ok=True)
+            out_path = os.path.join(out_folder, file_name)
 
-            with open(final_file_path, 'w') as f:
-                for _,obj_id, _, _ in entries:
+            # debug print—uncomment to verify where it's writing:
+            # print("Writing tracking labels to:", out_path)
+
+            with open(out_path, 'w') as f:
+                for _, obj_id, _, _ in entries:
                     f.write(f"{obj_id}\n")
+
+
+# def write_storage(merge_storage, storage_forward, storage_reverse,multi_cam_storage):
+#     """
+#     Write all storage dictionaries to disk.
+#     The folder name is changed based on label type.
+#     """
+
+#     for storage, label_folder in zip(
+#         [merge_storage, storage_forward, storage_reverse,multi_cam_storage],
+#         ['merge_labels', 'forward_labels', 'reverse_labels','multi_cam_labels']
+#     ):
+#         for file_path, entries in storage.items():
+
+#             parts = file_path.split(os.sep)
+#             parts[-3] = label_folder  # Change folder name to match label type
+#             folder_path = os.sep.join(parts[:-1])
+#             os.makedirs(folder_path, exist_ok=True)
+#             final_file_path = os.sep.join(parts)
+
+#             with open(final_file_path, 'w') as f:
+#                 for _,obj_id, _, _ in entries:
+#                     f.write(f"{obj_id}\n")
 
 # def write_storage(storage):
 #     """
@@ -1593,13 +1618,17 @@ if __name__ == '__main__':
     # -----------------------------------------------------------------------------
     merged = merge_storages(storage_fwd, storage_rev)
     
-    multi_cam = multi_camera_mapping(merged,0.5)
+    # multi_cam = multi_camera_mapping(merged,0.5)
+    write_storage(merged, storage_fwd, storage_rev, args.save_path)
+    for folder in ['forward_labels','reverse_labels','merge_labels']:
+        update_labels(
+            os.path.join(args.save_path, folder),
+            args.label_root
+        )
 
-    write_storage(merged, storage_fwd, storage_rev,multi_cam)
-
-    for folder in ['forward_labels', 'reverse_labels', 'merge_labels','multi_cam_labels']:
-        target = os.path.join(args.save_path, folder)
-        update_labels(target, args.label_root)
+    # for folder in ['forward_labels', 'reverse_labels', 'merge_labels']:
+    #     target = os.path.join(args.save_path, folder)
+    #     update_labels(target, args.label_root)
 
     logger.info('Tracking pipeline finished.')
 
